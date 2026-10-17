@@ -1,0 +1,20 @@
+name: Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      # Browser für die Oberflächen-Tests (playwright-core lädt selbst keinen herunter)
+      - run: npx --yes playwright@1.56.1 install --with-deps chromium
+      - name: Tests (alle externen Dienste sind darin nachgebaut)
+        run: npm test 2>&1 | tee test-output.txt
+      - name: Keine übersprungenen Tests erlaubt
+        run: grep -E '^# skipped 0$' test-output.txt && grep -E '^# fail 0$' test-output.txt
