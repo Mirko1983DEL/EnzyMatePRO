@@ -11,6 +11,8 @@
     "start": "node --disable-warning=ExperimentalWarning server.js",
     "test": "node --disable-warning=ExperimentalWarning --test-timeout=60000 --test test/*.test.js",
     "test:live": "node --disable-warning=ExperimentalWarning scripts/live-check.mjs",
+    "backup": "node --disable-warning=ExperimentalWarning scripts/backup.mjs",
+    "restore": "node --disable-warning=ExperimentalWarning scripts/restore.mjs",
     "migrate:encryption": "node --disable-warning=ExperimentalWarning scripts/migrate-encryption.mjs"
   },
   "devDependencies": {

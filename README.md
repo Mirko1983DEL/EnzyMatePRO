@@ -42,10 +42,16 @@ Die zuletzt gewählte Kreon-Größe bleibt gespeichert; eine neue Mahlzeit start
 - **Transportverschlüsselung** (HTTPS) übernimmt ein Reverse-Proxy (z. B. Caddy/nginx); die App selbst spricht nur HTTP.
 
 ## Tests, Migrationen, Prüfwerkzeuge
-- `npm test`: 52 Tests (Logik, Datenbank, Sicherheit, Plausibilität, 13 Browser-Tests mit Chromium; Open Food Facts und Gemini darin nachgebaut). Für die Browser-Tests `npm install` (Entwicklungs-Abhängigkeit `playwright-core`) und ein Chromium (Pfad per `CHROMIUM_PATH`); ohne beides werden sie mit Begründung übersprungen.
+- `npm test`: 58 Tests (Logik, Datenbank, Sicherheit, Plausibilität, 13 Browser-Tests mit Chromium; Open Food Facts und Gemini darin nachgebaut). Für die Browser-Tests `npm install` (Entwicklungs-Abhängigkeit `playwright-core`) und ein Chromium (Pfad per `CHROMIUM_PATH`); ohne beides werden sie mit Begründung übersprungen.
 - `npm run test:live`: **echte** Dienste (Open Food Facts; Gemini mit `GEMINI_API_KEY` und `-- --photo bild.jpg`). Nur ein Lauf dieses Befehls belegt „live getestet“.
 - Datenbankschema: nummerierte Migrationen (`db.js`), automatische Sicherung vor jeder Migration.
 - `npm run migrate:encryption`: Altdaten (Format v1) auf v2 umschlüsseln – nur auf ausdrücklichen Aufruf, mit Sicherung.
+
+## Sicherung und Wiederherstellung
+- `npm run backup [-- --out ordner]`: konsistente Kopie der Datenbank (auch bei laufendem Server) nach `<DATA_DIR>/backups/` plus Manifest (`.json`: Prüfsumme, Schema, Zeilenzahlen, Schlüsselkennung). Die Sicherung wird sofort durch Entschlüsseln aller Zeilen geprüft; bei Fehler bleibt nichts zurück. **Der Schlüssel ist nicht enthalten** und muss getrennt gesichert werden; ohne ihn ist die Sicherung unlesbar. Die Inhalte bleiben verschlüsselt, IDs und Zeitstempel der Mahlzeiten liegen wie in der Datenbank im Klartext.
+- `npm run restore -- <sicherung.db> --check`: prüft Prüfsumme, Schlüssel, Schemaversion und Entschlüsselung, ohne etwas zu verändern.
+- `npm run restore -- <sicherung.db> [--force]`: spielt die Sicherung zurück. **Server vorher beenden.** Existiert schon eine Datenbank, wird nur mit `--force` ersetzt; die aktuelle wird vorher als `.vor-wiederherstellung-….bak` gesichert. Es gibt kein automatisches Löschen alter Sicherungen und keinen Zeitplan (z. B. per cron `npm run backup` aufrufen; das ist nicht eingerichtet).
+- Nicht abgedeckt: Sicherung der Schlüsseldatei, Verschlüsselung der Sicherungsdatei selbst, Aufbewahrung außerhalb des Servers, Wiederherstellung einer laufenden Datenbank ohne Neustart. Ob der Server wirklich beendet ist, prüft das Skript nicht zuverlässig (nur Hinweis über Reste der WAL-Datei).
 
 ## Login später
 Alle Tabellen haben `user_id`; `resolveUser()` in `server.js` ist die einzige Stelle, die später durch Sessions/Login ersetzt werden muss.
