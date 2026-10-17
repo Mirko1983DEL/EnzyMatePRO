@@ -1,6 +1,8 @@
 # Kopie-Bericht EnzyMate → EnzyMate Pro
 
 ## Herkunft
+- Dieses Repository: `Mirko1983DEL/enzymatepro` (privat laut Anlage durch den Nutzer; Sichtbarkeit von Claude nicht geprüft). Der Produktname bleibt „EnzyMate Pro"; technische Namen im Code (`enzymate-pro`) sind davon unabhängig.
+- Die Historie enthält zusätzlich den automatischen GitHub-„Initial commit" (nur eine Titel-README), per Merge übernommen.
 - Quelle: `mirko1983del/cf`, Branch `claude/creon-app-redesign-jr0otc` (einziger Branch), Commit `79b9e0039b31c8ccb34654b64c6b6b1dd7779ea2` (17.10.2026).
 - Kopie per `git archive` (ohne Historie), frischer Start in diesem Repository. Das Original wurde nicht verändert (Git-Status dort: sauber).
 - Nicht übernommen: Git-Historie. Es gab keine Datenbanken, Schlüssel oder `.env`-Dateien im Original.
