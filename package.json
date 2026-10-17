@@ -1,0 +1,19 @@
+{
+  "name": "enzymate-pro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kreon-Dosierung und Mahlzeiten-Tracking (ein Patient, Login vorbereitet)",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test-timeout=60000 --test test/*.test.js",
+    "test:live": "node --disable-warning=ExperimentalWarning scripts/live-check.mjs",
+    "migrate:encryption": "node --disable-warning=ExperimentalWarning scripts/migrate-encryption.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.56.1"
+  }
+}

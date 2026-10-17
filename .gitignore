@@ -1,0 +1,10 @@
+data/
+node_modules/
+.env
+.env.*
+!.env.example
+test-results/
+*.bak
+*.db
+*.db-*
+secret.key

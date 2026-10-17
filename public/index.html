@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d6b63">
+<title>EnzyMate Pro</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <button class="icon" id="menuBtn" type="button" aria-label="Menü"><svg viewBox="0 0 24 24"><path d="M4 8h16M4 16h16"/></svg></button>
+    <span class="brand"><img src="icons/icon-96.png" alt="" width="30" height="30">EnzyMate Pro</span>
+    <button class="chip" id="sizeChip" type="button" aria-label="Kreon-Größe ändern"><span id="sizeLabel">Kreon 25.000</span><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg></button>
+  </header>
+  <!--demobar-->
+
+  <!-- Start: Scannen oder Mahlzeit -->
+  <main id="page-home" class="page">
+    <section id="empty" class="hero">
+      <div class="logo-wrap"><img class="logo" src="logo.webp" alt="EnzyMate Pro: Kapsel-Figur mit Smartphone und Croissant" width="360" height="258"></div>
+      <div class="hero-text"><p class="eyebrow" id="hello">Hallo</p>
+      <h1>Was gibt es<br>zu essen?</h1></div>
+      <div class="actions">
+        <label class="btn primary big" for="photo"><svg viewBox="0 0 24 24"><path d="M4 8.5A1.5 1.5 0 015.5 7h2.2l1.2-2h6.2l1.2 2h2.2A1.5 1.5 0 0120 8.5v9a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 17.5z"/><circle cx="12" cy="13" r="3.2"/></svg>Foto oder Barcode</label>
+        <button class="btn quiet" id="manualBtn" type="button">Manuell eingeben</button>
+      </div>
+    </section>
+
+    <section id="meal" class="meal" hidden>
+      <div class="dose">
+        <button class="round" id="capMinus" type="button" aria-label="Eine Kapsel weniger"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
+        <div class="dose-n"><b id="capCount">0</b><span id="capLabel">Kapseln</span></div>
+        <button class="round" id="capPlus" type="button" aria-label="Eine Kapsel mehr"><svg viewBox="0 0 24 24"><path d="M6 12h12M12 6v12"/></svg></button>
+      </div>
+      <button class="link" id="detailsBtn" type="button">Details zur Berechnung</button>
+      <ul id="items" class="list"></ul>
+      <div class="adders">
+        <label class="btn quiet" for="photo">+ Foto</label>
+        <button class="btn quiet" id="addBtn" type="button">+ Manuell</button>
+      </div>
+    </section>
+    <p id="scanMsg" class="status" role="status"></p>
+  </main>
+
+  <!-- Verlauf -->
+  <section id="page-history" class="page" hidden>
+    <div class="pagebar"><button class="icon" data-back type="button" aria-label="Zurück"><svg viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6"/></svg></button><h2>Verlauf</h2><button class="chip small" id="reportBtn" type="button">Bericht</button></div>
+    <div class="seg" id="modeSeg" role="radiogroup" aria-label="Zeitraum">
+      <button type="button" data-mode="day" role="radio" aria-checked="true">Tag</button>
+      <button type="button" data-mode="week" role="radio" aria-checked="false">Woche</button>
+      <button type="button" data-mode="month" role="radio" aria-checked="false">Monat</button>
+      <button type="button" data-mode="custom" role="radio" aria-checked="false">Frei</button>
+    </div>
+    <div class="pager"><button class="icon" id="dayPrev" type="button" aria-label="Zurück"><svg viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6"/></svg></button>
+      <button class="pager-label" id="dayLabel" type="button"></button>
+      <button class="icon" id="dayNext" type="button" aria-label="Weiter"><svg viewBox="0 0 24 24"><path d="M10 6l6 6-6 6"/></svg></button></div>
+    <button class="summary" id="summaryBtn" type="button">
+      <span><b id="sumCaps">0</b><small>Kapseln</small></span>
+      <span><b id="sumFat">0 g</b><small>Fett</small></span>
+      <span><b id="sumKcal">0</b><small>kcal</small></span>
+      <svg viewBox="0 0 24 24"><path d="M10 6l6 6-6 6"/></svg>
+    </button>
+    <ul id="meals" class="list flat"></ul>
+    <p id="histEmpty" class="muted center" hidden>Noch keine Einträge in diesem Zeitraum.</p>
+  </section>
+
+  <!-- Bericht für das Arztgespräch -->
+  <section id="page-report" class="page" hidden>
+    <div class="pagebar noprint"><button class="icon" id="reportBack" type="button" aria-label="Zurück"><svg viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6"/></svg></button><h2>Bericht</h2></div>
+    <div class="report-actions noprint">
+      <button class="btn primary" id="rPrint" type="button">Drucken</button>
+      <button class="btn quiet" id="rCsv" type="button">CSV</button>
+      <button class="btn quiet" id="rCopy" type="button">Kopieren</button>
+    </div>
+    <article id="reportBody" class="report"></article>
+  </section>
+
+  <!-- Profil -->
+  <section id="page-profile" class="page" hidden>
+    <div class="pagebar"><button class="icon" data-back type="button" aria-label="Zurück"><svg viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6"/></svg></button><h2 id="profileTitle">Profil</h2></div>
+    <form id="profileForm" class="form">
+      <label>Name<input id="pName" maxlength="60" required></label>
+      <div class="two">
+        <label>Größe (cm)<input id="pHeight" type="number" inputmode="decimal" step="any" min="30" max="250"></label>
+        <label>Gewicht (kg)<input id="pWeight" type="number" inputmode="decimal" step="any" min="2" max="300"></label>
+      </div>
+      <label>Lipase-Faktor <small>Einheiten pro g Fett</small><input id="pFactor" type="number" inputmode="decimal" step="any" min="1" max="20000" required></label>
+      <p class="muted small">Den Faktor legt die behandelnde Ärztin oder der behandelnde Arzt fest. Die App rechnet nur damit und ersetzt keine ärztliche Dosierung.</p>
+      <button class="btn primary" type="submit">Speichern</button>
+    </form>
+  </section>
+
+  <div class="dock" id="dock" hidden><button class="btn primary big" id="saveMeal" type="button">Einnahme speichern</button></div>
+</div>
+<div id="toast" role="status"></div>
+<div id="loader" popover="manual" role="status" aria-label="Wird geladen" aria-live="polite">
+  <svg class="pill" viewBox="0 0 120 60" aria-hidden="true" focusable="false">
+    <defs><linearGradient id="pillGreen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5fd9b4"/><stop offset="1" stop-color="#26a583"/></linearGradient></defs>
+    <path d="M60 8H24a22 22 0 0 0 0 44h36z" fill="#f8f3e6"/>
+    <path d="M60 8h36a22 22 0 0 1 0 44H60z" fill="url(#pillGreen)"/>
+    <g fill="#d9f6ea" opacity=".95"><circle cx="70" cy="22" r="5"/><circle cx="82" cy="19" r="4.5"/><circle cx="92" cy="25" r="4.5"/><circle cx="74" cy="34" r="5"/><circle cx="86" cy="36" r="5"/><circle cx="96" cy="39" r="3.5"/><circle cx="68" cy="45" r="3.5"/><circle cx="80" cy="46" r="3.5"/></g>
+    <path d="M60 8H24a22 22 0 0 0 0 44h72a22 22 0 0 0 0-44z" fill="none" stroke="#1f6f5c" stroke-opacity=".35" stroke-width="2"/>
+    <path d="M18 17a14 14 0 0 1 12-6" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+  </svg>
+</div>
+
+<!-- Pop-ups -->
+<dialog class="sheet" id="menuDlg"><div class="sheet-body">
+  <h3>Menü</h3>
+  <button class="row" data-go="history" type="button">Verlauf &amp; Auswertung<svg viewBox="0 0 24 24"><path d="M10 6l6 6-6 6"/></svg></button>
+  <button class="row" data-go="profile" type="button">Profil<svg viewBox="0 0 24 24"><path d="M10 6l6 6-6 6"/></svg></button>
+  <p class="muted small">Die App berechnet Richtwerte und ersetzt keine ärztliche Dosierung.</p>
+</div></dialog>
+
+<dialog class="sheet" id="sizeDlg"><div class="sheet-body">
+  <h3>Welche Kreon-Kapsel?</h3>
+  <p class="muted small">Die Wahl bleibt gespeichert, bis du sie änderst.</p>
+  <div id="sizeOpts" class="opts" role="radiogroup" aria-label="Kreon-Größe"></div>
+</div></dialog>
+
+<dialog class="sheet" id="itemDlg"><form class="sheet-body form" id="itemForm" method="dialog" autocomplete="off">
+  <h3 id="itemTitle">Lebensmittel</h3>
+  <ul id="itemIssues" class="issues" hidden></ul>
+  <label>Was<input id="fName" required maxlength="80" placeholder="z. B. Nudeln mit Soße"></label>
+  <div class="two">
+    <label>Menge (g)<input id="fGrams" type="number" inputmode="decimal" step="any" min="0.1" required></label>
+    <label>Fett pro 100 g<input id="fFat" type="number" inputmode="decimal" step="any" min="0" max="100" required></label>
+  </div>
+  <details class="more"><summary>Weitere Nährwerte</summary>
+    <div class="two">
+      <label>kcal /100 g<input id="fKcal" type="number" inputmode="decimal" step="any" min="0" max="900"></label>
+      <label>Kohlenh. /100 g<input id="fCarbs" type="number" inputmode="decimal" step="any" min="0" max="100"></label>
+      <label>Eiweiß /100 g<input id="fProt" type="number" inputmode="decimal" step="any" min="0" max="100"></label>
+    </div>
+  </details>
+  <button class="btn primary" type="submit" id="itemOk">Hinzufügen</button>
+  <button class="btn quiet danger" type="button" id="itemDel" hidden>Entfernen</button>
+</form></dialog>
+
+<dialog class="sheet" id="detailsDlg"><div class="sheet-body">
+  <h3>Berechnung</h3>
+  <dl class="kv" id="detailsBody"></dl>
+  <p class="warn" id="detailsWarn" hidden></p>
+  <p class="muted small">Richtwert. Die Dosierung legt die behandelnde Ärztin oder der behandelnde Arzt fest.</p>
+</div></dialog>
+
+<dialog class="sheet" id="statsDlg"><div class="sheet-body">
+  <h3 id="statsTitle">Auswertung</h3>
+  <dl class="kv" id="statsBody"></dl>
+  <p class="muted small" id="statsNote"></p>
+</div></dialog>
+
+<dialog class="sheet" id="mealDlg"><div class="sheet-body">
+  <h3 id="mealTitle">Mahlzeit</h3>
+  <ul class="list flat" id="mealItems"></ul>
+  <dl class="kv" id="mealBody"></dl>
+  <button class="btn quiet danger" id="mealDel" type="button">Eintrag löschen</button>
+</div></dialog>
+
+<dialog class="sheet" id="rangeDlg"><form class="sheet-body form" id="rangeForm" method="dialog">
+  <h3>Zeitraum wählen</h3>
+  <div class="two"><label>Von<input id="rFrom" type="date" required></label><label>Bis<input id="rTo" type="date" required></label></div>
+  <button class="btn primary" type="submit">Anzeigen</button>
+</form></dialog>
+
+<dialog class="sheet" id="failDlg"><form class="sheet-body" method="dialog">
+  <h3>Kein Barcode erkannt</h3>
+  <p class="muted" id="failMsg">Auf dem Foto wurde kein Barcode erkannt.</p>
+  <button class="btn primary" value="retry">Neuer Versuch</button>
+  <button class="btn quiet" value="ai" id="failAi">KI benutzen</button>
+  <button class="btn quiet" value="no">Abbrechen</button>
+</form></dialog>
+
+<dialog class="sheet" id="aiDlg"><form class="sheet-body" method="dialog">
+  <h3>KI-Auswertung</h3>
+  <p>Das <b>Foto geht an <span id="aiProvider">Google (Gemini)</span></b>, um das Essen zu schätzen. Es werden keine Patientendaten mitgeschickt.</p>
+  <p class="muted small" id="aiNote">Bei kostenloser Nutzung darf Google Eingaben nach eigenen Angaben zur Produktverbesserung verwenden. Fotografiere daher keine Personen oder Dokumente. Die Schätzung ist ungenau – Mengen und Fett bitte prüfen.</p>
+  <button class="btn primary" value="ok">Verstanden, KI nutzen</button>
+  <button class="btn quiet" value="no">Abbrechen</button>
+</form></dialog>
+
+<dialog class="sheet" id="tokenDlg"><form class="sheet-body form" id="tokenForm" method="dialog">
+  <h3>Zugriffscode</h3>
+  <input id="tokenInput" type="password" autocomplete="current-password" required>
+  <button class="btn primary" type="submit">Weiter</button>
+</form></dialog>
+
+<input id="photo" type="file" accept="image/*" capture="environment" hidden>
+<script type="module" src="app.js"></script>
+</body>
+</html>
