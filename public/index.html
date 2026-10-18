@@ -169,16 +169,15 @@
 </form></dialog>
 
 <dialog class="sheet" id="failDlg"><form class="sheet-body" method="dialog">
-  <h3>Kein Barcode erkannt</h3>
+  <h3 id="failTitle">Kein Barcode erkannt</h3>
   <p class="muted" id="failMsg">Auf dem Foto wurde kein Barcode erkannt.</p>
   <button class="btn primary" value="retry">Neuer Versuch</button>
-  <button class="btn quiet" value="ai" id="failAi">KI benutzen</button>
   <button class="btn quiet" value="no">Abbrechen</button>
 </form></dialog>
 
 <dialog class="sheet" id="aiDlg"><form class="sheet-body" method="dialog">
   <h3>KI-Auswertung</h3>
-  <p>Das <b>Foto geht an <span id="aiProvider">Google (Gemini)</span></b>, um das Essen zu schätzen. Es werden keine Patientendaten mitgeschickt.</p>
+  <p>Das <b>Foto geht an <span id="aiProvider">Google (Gemini)</span></b>, um das Essen zu schätzen, sobald auf einem Foto kein Barcode erkannt wird oder das Produkt unbekannt ist – künftig ohne weitere Rückfrage. Es werden keine Patientendaten mitgeschickt.</p>
   <p class="muted small" id="aiNote">Bei kostenloser Nutzung darf Google Eingaben nach eigenen Angaben zur Produktverbesserung verwenden. Fotografiere daher keine Personen oder Dokumente. Die Schätzung ist ungenau – Mengen und Fett bitte prüfen.</p>
   <button class="btn primary" value="ok">Verstanden, KI nutzen</button>
   <button class="btn quiet" value="no">Abbrechen</button>

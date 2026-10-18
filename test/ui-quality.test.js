@@ -51,8 +51,8 @@ test('KI-Einträge mit Hinweisen: markiert, Fett leer, Speichern erst nach Prüf
   if (!browser) return t.skip(skipReason);
   const app = await startApp({ geminiItems: GEMINI }, 'KEY'); const { page, problems, ctx } = await newPage();
   await page.goto(app.base); await page.waitForSelector('#manualBtn');
-  await page.setInputFiles('#photo', png(plainPhoto())); await page.waitForSelector('#failDlg[open]', { timeout: 20000 });
-  await page.click('#failAi'); await page.waitForSelector('#aiDlg[open]'); await page.click('#aiDlg button[value=ok]');
+  await page.setInputFiles('#photo', png(plainPhoto())); await page.waitForSelector('#aiDlg[open]', { timeout: 20000 });
+  await page.click('#aiDlg button[value=ok]');
   await page.waitForFunction(() => document.querySelectorAll('#items li').length === 3, null, { timeout: 15000 });
   assert.equal(await page.locator('#items .tag.review').count(), 2);
   assert.match(await page.textContent('#scanMsg'), /2 Einträge sind markiert/);
@@ -142,5 +142,22 @@ test('Ladeanzeige: Kapsel erscheint erst bei langsamer Antwort, dreht sich und v
   assert.notEqual(await page.evaluate(() => getComputedStyle(document.querySelector('#loader .pill')).animationName), 'none', 'dreht sich');
   await toastHas(page, /Gespeichert/); assert.equal(await shown(), false, 'danach ausgeblendet');
   await page.unroute('**/api/meals'); await manual(page, 'Brot', 50, 1); await page.click('#saveMeal'); await toastHas(page, /Gespeichert/);
+  assert.deepEqual(problems, []); await ctx.close();
+});
+
+test('Kein Essen erkannt: Pop-up; Neuer Versuch öffnet die Kamera erneut; zweite Aufnahme geht ohne erneute Einwilligung automatisch an die KI', async (t) => {
+  if (!browser) return t.skip(skipReason);
+  const app = await startApp({}, 'KEY'); const { page, problems, ctx } = await newPage();
+  await page.goto(app.base); await page.waitForSelector('#manualBtn');
+  await page.setInputFiles('#photo', png(plainPhoto())); await page.waitForSelector('#aiDlg[open]', { timeout: 20000 });
+  await page.click('#aiDlg button[value=ok]');
+  await page.waitForSelector('#failDlg[open]', { timeout: 15000 });
+  assert.equal((await page.textContent('#failTitle')).trim(), 'Kein Essen erkannt');
+  assert.equal(await page.locator('#items li').count(), 0);
+  await page.click('#failDlg button[value=no]');
+  await page.setInputFiles('#photo', png(plainPhoto()));
+  await page.waitForSelector('#failDlg[open]', { timeout: 15000 });
+  assert.equal(await page.isVisible('#aiDlg[open]'), false, 'Einwilligung wird nur einmal abgefragt');
+  assert.equal((await page.textContent('#failTitle')).trim(), 'Kein Essen erkannt');
   assert.deepEqual(problems, []); await ctx.close();
 });

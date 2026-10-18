@@ -1,5 +1,5 @@
 import { plausibilityIssues } from './estimate.js';
-// Foto -> Barcode (lokal im Browser) -> Open Food Facts; ohne Barcode -> KI-Schätzung.
+// Foto -> Barcode (lokal im Browser) -> Open Food Facts; ohne Barcode/Treffer -> automatisch KI-Schätzung (nach einmaliger Einwilligung).
 const FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e'];
 let detectorPromise;
 // Standard: Dateien aus vendor/. Die Einzeldatei-Demo setzt globalThis.creonAssetUrl (Blob-URLs).
@@ -32,7 +32,7 @@ async function findBarcode(canvas) {
 const blobToBase64 = (blob) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.readAsDataURL(blob); });
 
 /** Liefert { items, note }, { retry: true } (neues Foto) oder null (abgebrochen). Wirft bei Fehlern. */
-export async function scanImage(file, { api, ai, confirmAi, chooseNext, status }) {
+export async function scanImage(file, { api, ai, confirmAi, notify, status }) {
   const big = await toBitmap(file, 1600);
   const code = await findBarcode(big);
   if (code) {
@@ -46,15 +46,16 @@ export async function scanImage(file, { api, ai, confirmAi, chooseNext, status }
         : `${p.name}: In Open Food Facts fehlt die Fettangabe – bitte Fett pro 100 g ergänzen (antippen).` };
     }
   }
-  // Barcode fehlt/unbekannt: Nutzer entscheidet, ob neu fotografiert oder die KI genutzt wird.
-  const choice = await chooseNext(code ? `Barcode ${code} ist nicht in Open Food Facts.` : 'Auf dem Foto wurde kein Barcode erkannt.', ai);
-  if (choice === 'retry') return { retry: true };
-  if (choice !== 'ai') return null;
+  // Barcode fehlt/unbekannt: ohne Rückfrage weiter mit der KI. Ist sie nicht eingerichtet, erklärt ein Pop-up das.
+  const retryOrStop = (choice) => (choice === 'retry' ? { retry: true } : null);
+  if (!ai) {
+    return retryOrStop(await notify({ title: 'Kein Barcode erkannt', message: (code ? `Barcode ${code} ist nicht in Open Food Facts.` : 'Auf dem Foto wurde kein Barcode erkannt.') + ' Die KI ist nicht eingerichtet.' }));
+  }
   if (!(await confirmAi())) return null;
-  status('KI schätzt das Essen …');
+  status(code ? 'Produkt unbekannt – KI schätzt das Essen …' : 'Kein Barcode – KI schätzt das Essen …');
   const small = await toBitmap(file, 1024);
   const blob = await new Promise((ok) => small.toBlob(ok, 'image/jpeg', 0.8));
   const r = await api('/estimate', 'POST', { image: await blobToBase64(blob), mime: 'image/jpeg' });
-  if (!r.items.length) return { items: [], note: 'Kein Essen erkannt.' };
+  if (!r.items.length) return retryOrStop(await notify({ title: 'Kein Essen erkannt', message: 'Auf dem Foto konnte kein Essen erkannt werden. Bitte neu fotografieren.' }));
   return { items: r.items, note: 'KI-Schätzung – Mengen und Fett bitte prüfen (Eintrag antippen zum Korrigieren).' };
 }

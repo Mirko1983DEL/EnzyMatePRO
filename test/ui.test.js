@@ -106,27 +106,26 @@ test('Barcode-Foto: Erkennung im Browser, Abfrage (Mock) und Herkunftsmarke OFF'
   assert.deepEqual(problems, []); await ctx.close();
 });
 
-test('Foto ohne Barcode: Auswahl erscheint; ohne KI-Schlüssel kein KI-Knopf; Abbrechen speichert nichts', async (t) => {
+test('Foto ohne Barcode, KI nicht eingerichtet: Pop-up erklärt es; Abbrechen speichert nichts', async (t) => {
   if (!browser) return t.skip(skipReason);
   const app = await startApp(); await app.setProfile(2000); const { page, problems, ctx } = await newPage();
   await page.goto(app.base); await page.waitForSelector('#manualBtn');
   await page.setInputFiles('#photo', png(plainPhoto()));
   await page.waitForSelector('#failDlg[open]', { timeout: 20000 });
-  assert.equal(await page.isVisible('#failAi'), false); assert.match(await page.textContent('#failMsg'), /nicht eingerichtet/);
+  assert.equal(await page.locator('#failAi').count(), 0, 'keine Auswahl „KI benutzen“ mehr'); assert.match(await page.textContent('#failMsg'), /nicht eingerichtet/);
   await page.click('#failDlg button[value=no]');
   assert.equal(await page.locator('#items li').count(), 0);
   assert.ok(app.log.length === 0, 'kein Dienst wurde aufgerufen');
   assert.deepEqual(problems, []); await ctx.close();
 });
 
-test('KI-Schätzung (Mock): erst nach Auswahl und Einwilligung, Einträge als KI markiert', async (t) => {
+test('KI-Schätzung (Mock): automatisch bei fehlendem Barcode, erst nach einmaliger Einwilligung, Einträge als KI markiert', async (t) => {
   if (!browser) return t.skip(skipReason);
   const app = await startApp({ geminiKey: 'TESTSCHLUESSEL' }); await app.setProfile(2000); const { page, problems, ctx } = await newPage();
   await page.goto(app.base); await page.waitForSelector('#manualBtn');
   await page.setInputFiles('#photo', png(plainPhoto()));
-  await page.waitForSelector('#failDlg[open]', { timeout: 20000 });
-  assert.ok(!app.log.some((u) => u.includes('generativelanguage')), 'vor der Auswahl keine KI');
-  await page.click('#failAi'); await page.waitForSelector('#aiDlg[open]');
+  await page.waitForSelector('#aiDlg[open]', { timeout: 20000 });
+  assert.equal(await page.isVisible('#failDlg[open]'), false, 'keine Auswahl zwischen Neuer Versuch und KI');
   assert.ok(!app.log.some((u) => u.includes('generativelanguage')), 'vor der Einwilligung keine KI');
   await page.click('#aiDlg button[value=ok]'); await page.waitForFunction(() => document.querySelectorAll('#items li').length === 2, null, { timeout: 15000 });
   const rows = await page.locator('#items li').allTextContents();

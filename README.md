@@ -27,7 +27,7 @@ Den Faktor legt die behandelnde Ärztin / der behandelnde Arzt fest. Die App ers
 ## Scan: Barcode oder KI
 1. Foto wird **im Browser** nach einem Barcode (EAN/UPC) durchsucht (eingebauter `BarcodeDetector`, sonst mitgelieferte zxing-Bibliothek in `public/vendor/`, MIT-Lizenz).
 2. Barcode gefunden → nur die Nummer geht an die Open-Food-Facts-Datenbank (Nährwerte pro 100 g).
-3. Kein Barcode / Produkt unbekannt → Auswahl „Neuer Versuch / KI benutzen / Abbrechen“. Nur bei „KI benutzen“ geht das Foto an Gemini, das Zutaten, Mengen und Nährwerte **schätzt**. Vor der ersten Nutzung erscheint ein Hinweis. Einträge sind als „KI-Schätzung“ markiert und per Antippen korrigierbar.
+3. Kein Barcode / Produkt unbekannt → die KI (Gemini) **schätzt automatisch** Zutaten, Mengen und Nährwerte, ohne Auswahl. Vor der ersten Nutzung erscheint einmalig ein Hinweis mit Einwilligung (gemerkt im Browser); ohne Einwilligung geht nichts an die KI. Erkennt die KI kein Essen, erscheint das Pop-up „Kein Essen erkannt“ (Neuer Versuch / Abbrechen). Ist die KI nicht eingerichtet, erklärt ein Pop-up das. Einträge sind als „KI-Schätzung“ markiert und per Antippen korrigierbar.
 Der API-Schlüssel liegt nur auf dem Server; KI-Aufrufe sind auf 10/Minute begrenzt.
 
 ## Verlauf & Auswertung

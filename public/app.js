@@ -168,7 +168,7 @@ $('itemForm').addEventListener('submit', (e) => {
 });
 $('itemDel').onclick = () => { state.items.splice(state.editIndex, 1); state.capsTouched = false; $('itemDlg').close(); renderHome(); };
 
-// ---- Scan (Barcode -> Open Food Facts, sonst KI) ----
+// ---- Scan (Barcode -> Open Food Facts, sonst automatisch KI) ----
 const AI_OK = () => { try { return localStorage.getItem('enzymateProAiConsent') === '1'; } catch { return false; } };
 async function confirmAi() {
   if (AI_OK()) return true;
@@ -176,14 +176,12 @@ async function confirmAi() {
   if (ok) try { localStorage.setItem('enzymateProAiConsent', '1'); } catch { /* nur für diese Sitzung */ }
   return ok;
 }
-const chooseNext = (reason, aiAvailable) => askChoice('failDlg', () => {
-  $('failMsg').textContent = reason + (aiAvailable ? '' : ' Die KI ist nicht eingerichtet.'); $('failAi').hidden = !aiAvailable;
-});
+const notify = ({ title, message }) => askChoice('failDlg', () => { $('failTitle').textContent = title; $('failMsg').textContent = message; });
 $('photo').addEventListener('change', guard(async (e) => {
   const file = e.target.files[0]; e.target.value = ''; if (!file) return;
   const msg = $('scanMsg'); msg.textContent = 'Suche Barcode …';
   try {
-    const r = await scanImage(file, { api: call, ai: state.ai, confirmAi, chooseNext, status: (t) => (msg.textContent = t) });
+    const r = await scanImage(file, { api: call, ai: state.ai, confirmAi, notify, status: (t) => (msg.textContent = t) });
     if (!r) { msg.textContent = ''; return; }
     if (r.retry) { msg.textContent = 'Neues Foto aufnehmen – Barcode gut sichtbar, ohne Spiegelung.'; $('photo').click(); return; }
     state.items.push(...r.items); state.capsTouched = false; renderHome();
