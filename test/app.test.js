@@ -10,7 +10,7 @@ import { totals, dose, rangeFor, elapsedDays, summarize, recommendedUnits } from
 test('Verschlüsselung: Roundtrip, Manipulation wird erkannt', () => {
   const key = randomBytes(32), blob = encrypt(key, { a: 1 });
   assert.deepEqual(decrypt(key, blob), { a: 1 });
-  assert.throws(() => decrypt(key, blob.slice(0, -2) + 'AA'));
+  assert.throws(() => decrypt(key, blob.slice(0, -2) + (blob.endsWith('AA') ? 'BB' : 'AA'))); // sicher verändert (früher: selten zufällig identisch)
   assert.throws(() => decrypt(randomBytes(32), blob));
 });
 

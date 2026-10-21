@@ -42,10 +42,13 @@ Die zuletzt gewählte Kreon-Größe bleibt gespeichert; eine neue Mahlzeit start
 - **Transportverschlüsselung** (HTTPS) übernimmt ein Reverse-Proxy (z. B. Caddy/nginx); die App selbst spricht nur HTTP.
 
 ## Tests, Migrationen, Prüfwerkzeuge
-- `npm test`: 52 Tests (Logik, Datenbank, Sicherheit, Plausibilität, 13 Browser-Tests mit Chromium; Open Food Facts und Gemini darin nachgebaut). Für die Browser-Tests `npm install` (Entwicklungs-Abhängigkeit `playwright-core`) und ein Chromium (Pfad per `CHROMIUM_PATH`); ohne beides werden sie mit Begründung übersprungen.
+- `npm test`: 67 Tests (Logik, Datenbank, Sicherheit, Plausibilität, 13 Browser-Tests mit Chromium; Open Food Facts und Gemini darin nachgebaut). Für die Browser-Tests `npm install` (Entwicklungs-Abhängigkeit `playwright-core`) und ein Chromium (Pfad per `CHROMIUM_PATH`); ohne beides werden sie mit Begründung übersprungen.
 - `npm run test:live`: **echte** Dienste (Open Food Facts; Gemini mit `GEMINI_API_KEY` und `-- --photo bild.jpg`). Nur ein Lauf dieses Befehls belegt „live getestet“.
 - Datenbankschema: nummerierte Migrationen (`db.js`), automatische Sicherung vor jeder Migration.
 - `npm run migrate:encryption`: Altdaten (Format v1) auf v2 umschlüsseln – nur auf ausdrücklichen Aufruf, mit Sicherung.
+
+## Snack-Kompass
+Startseite „Ich habe Lust auf …“: drei Optionen (Alternative, genießen, nachspüren), optional Übernahme in die Mahlzeit. Feste Texte ohne KI. Details, Sicherheitsregeln und Grenzen: `docs/SNACK_KOMPASS.md`.
 
 ## Login später
 Alle Tabellen haben `user_id`; `resolveUser()` in `server.js` ist die einzige Stelle, die später durch Sessions/Login ersetzt werden muss.

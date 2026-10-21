@@ -35,11 +35,25 @@ async function estimateWithClaude(body) {
   } catch (e) { throw new Error(SAMPLE_ERRORS[e?.code] || `KI-Anfrage fehlgeschlagen (${e?.code || 'Fehler'})`); }
 }
 
+const snackProfileFields = (b) => { const p = snackProfile(b), o = {}; for (const k of Object.keys(p)) if (p[k]) o[k] = p[k]; return o; };
+async function snackWithClaude(body) {
+  let req; try { req = cleanSnackRequest(body); } catch (e) { throw new Error(e.message); }
+  const profile = snackProfile(load().patient);
+  const fixed = (notice) => ({ source: 'fallback', notice, options: fallbackAdvice(req.wishId, profile) });
+  const sample = await getSample();
+  if (!sample) return fixed('Die KI ist in dieser Ansicht nicht verfügbar. Hier sind feste Hinweise.');
+  try {
+    const out = await sample.json(buildSnackPrompt(req, profile) + '\n\n' + SNACK_JSON_FORMAT_HINT, { modelTier: 'default' });
+    const options = normalizeAdvice(out, profile);
+    return options ? { source: 'ai', options } : fixed('Die KI-Antwort war nicht verwendbar. Hier sind feste Hinweise.');
+  } catch (e) { return fixed(SAMPLE_ERRORS[e?.code] ? `${SAMPLE_ERRORS[e.code]} Hier sind feste Hinweise.` : 'Die KI-Beratung hat gerade nicht geklappt. Hier sind feste Hinweise.'); }
+}
+
 export async function api(path, method = 'GET', body) {
   const d = load(); const [p, query = ''] = path.split('?'); const q = new URLSearchParams(query);
   if (p === '/state') return { patient: d.patient, settings: d.settings, foods: d.foods, capsuleSizes: CAPSULE_SIZES, ai: !!(await Promise.race([getSample(), new Promise((r) => setTimeout(() => r(null), 4000))])) };
   if (p === '/patient') {
-    d.patient = { name: String(body.name || '').trim().slice(0, 60) || 'Patient', heightCm: num(body.heightCm, 30, 250, 'Größe ungültig'), weightKg: num(body.weightKg, 2, 300, 'Gewicht ungültig'), lipasePerGramFat: num(body.lipasePerGramFat, 0, 20000, 'Lipase-Faktor ungültig') };
+    d.patient = { name: String(body.name || '').trim().slice(0, 60) || 'Patient', heightCm: num(body.heightCm, 30, 250, 'Größe ungültig'), weightKg: num(body.weightKg, 2, 300, 'Gewicht ungültig'), lipasePerGramFat: num(body.lipasePerGramFat, 0, 20000, 'Lipase-Faktor ungültig'), ...snackProfileFields(body) };
     save(); return d.patient;
   }
   if (p === '/settings') { if (!CAPSULE_SIZES.includes(+body.capsuleSize)) throw new Error('Unbekannte Kapselgröße'); d.settings = { ...d.settings, capsuleSize: +body.capsuleSize }; save(); return d.settings; }
@@ -74,5 +88,6 @@ export async function api(path, method = 'GET', body) {
     return { found: true, name: [pr.product_name, pr.brands && `(${String(pr.brands).split(',')[0]})`].filter(Boolean).join(' ') || `Produkt ${m[1]}`, per100: { fat: fat ?? 0, kcal: Math.round(+kcal || 0), carbs: +nu.carbohydrates_100g || 0, protein: +nu.proteins_100g || 0 }, servingGrams: +pr.serving_quantity || null, complete: fat != null, source: 'openfoodfacts' };
   }
   if (p === '/estimate') return estimateWithClaude(body);
+  if (p === '/snack-advice') return snackWithClaude(body);
   throw new Error('Unbekannte Route');
 }

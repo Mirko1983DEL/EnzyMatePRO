@@ -28,6 +28,7 @@
       <div class="actions">
         <label class="btn primary big" for="photo"><svg viewBox="0 0 24 24"><path d="M4 8.5A1.5 1.5 0 015.5 7h2.2l1.2-2h6.2l1.2 2h2.2A1.5 1.5 0 0120 8.5v9a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 17.5z"/><circle cx="12" cy="13" r="3.2"/></svg>Foto oder Barcode</label>
         <button class="btn quiet" id="manualBtn" type="button">Manuell eingeben</button>
+        <button class="btn quiet" id="snackJump" type="button">Ich habe Lust auf …</button>
       </div>
     </section>
 
@@ -45,6 +46,19 @@
       </div>
     </section>
     <p id="scanMsg" class="status" role="status"></p>
+
+    <!-- Snack-Kompass -->
+    <section id="snack" class="snack" aria-labelledby="snackH">
+      <h2 id="snackH">Ich habe Lust auf …</h2>
+      <p class="muted small">Eine kleine Entscheidungshilfe. Nichts ist verboten.</p>
+      <div id="snackWishes" class="wishes"></div>
+      <form id="snackForm" class="snack-own" autocomplete="off">
+        <input id="snackText" maxlength="200" placeholder="Etwas anderes …" aria-label="Eigene Eingabe">
+        <button class="btn primary" type="submit">Los</button>
+      </form>
+      <div class="two"><select id="snackMood" aria-label="Stimmung (freiwillig)"></select><select id="snackHunger" aria-label="Hunger (freiwillig)"></select></div>
+      <p class="muted small">Stimmung und Hunger sind freiwillig.</p>
+    </section>
   </main>
 
   <!-- Verlauf -->
@@ -91,6 +105,13 @@
       </div>
       <label>Lipase-Faktor <small>Einheiten pro g Fett</small><input id="pFactor" type="number" inputmode="decimal" step="any" min="1" max="20000" required></label>
       <p class="muted small">Den Faktor legt die behandelnde Ärztin oder der behandelnde Arzt fest. Die App rechnet nur damit und ersetzt keine ärztliche Dosierung.</p>
+      <details class="more"><summary>Angaben für den Snack-Kompass (freiwillig)</summary>
+        <label>Altersgruppe<select id="pAge"><option value="">keine Angabe</option></select></label>
+        <label>Allergien / Unverträglichkeiten<input id="pAllergies" maxlength="200" placeholder="z. B. Nüsse, Laktose"></label>
+        <label>Vorlieben<input id="pPrefs" maxlength="200" placeholder="z. B. mag Erdbeeren, keine Rosinen"></label>
+        <label>Ernährungshinweise vom Ärzteteam <small>wird nur weitergegeben, nicht geprüft</small><textarea id="pDiet" maxlength="300" rows="3"></textarea></label>
+        <p class="muted small">Nur ausfüllen, was du mit der KI teilen möchtest. Die Angaben ändern die Enzymberechnung nicht.</p>
+      </details>
       <button class="btn primary" type="submit">Speichern</button>
     </form>
   </section>
@@ -113,6 +134,7 @@
 <dialog class="sheet" id="menuDlg"><div class="sheet-body">
   <h3>Menü</h3>
   <button class="row" data-go="history" type="button">Verlauf &amp; Auswertung<svg viewBox="0 0 24 24"><path d="M10 6l6 6-6 6"/></svg></button>
+  <button class="row" id="menuSnack" type="button">Snack-Kompass<svg viewBox="0 0 24 24"><path d="M10 6l6 6-6 6"/></svg></button>
   <button class="row" data-go="profile" type="button">Profil<svg viewBox="0 0 24 24"><path d="M10 6l6 6-6 6"/></svg></button>
   <p class="muted small">Die App berechnet Richtwerte und ersetzt keine ärztliche Dosierung.</p>
 </div></dialog>
@@ -181,6 +203,22 @@
   <p class="muted small" id="aiNote">Bei kostenloser Nutzung darf Google Eingaben nach eigenen Angaben zur Produktverbesserung verwenden. Fotografiere daher keine Personen oder Dokumente. Die Schätzung ist ungenau – Mengen und Fett bitte prüfen.</p>
   <button class="btn primary" value="ok">Verstanden, KI nutzen</button>
   <button class="btn quiet" value="no">Abbrechen</button>
+</form></dialog>
+
+<dialog class="sheet" id="snackDlg"><div class="sheet-body">
+  <h3>Snack-Kompass</h3>
+  <p class="muted small" id="snackNotice" role="status" hidden></p>
+  <div id="snackOpts" class="snack-opts"></div>
+  <p class="muted small">Das sind Anregungen, keine medizinische Beratung. Die Enzymmenge richtet sich nur nach den ärztlichen Vorgaben im Profil.</p>
+  <button class="btn quiet" id="snackClose" type="button">Schließen</button>
+</div></dialog>
+
+<dialog class="sheet" id="snackAiDlg"><form class="sheet-body" method="dialog">
+  <h3>KI für den Snack-Kompass</h3>
+  <p>An <b>Google (Gemini)</b> gehen: deine Auswahl oder Eingabe, freiwillig Stimmung und Hunger, die Namen der heute erfassten Lebensmittel und – falls im Profil ausgefüllt – Altersgruppe, Vorlieben, Allergien und Ernährungshinweise. Name, Größe, Gewicht und Lipase-Faktor werden nicht gesendet.</p>
+  <p class="muted small" id="snackNote">Bei kostenloser Nutzung darf Google Eingaben nach eigenen Angaben zur Produktverbesserung verwenden. Trage nur ein, was du teilen möchtest. Die Vorschläge sind ungenau und keine medizinische Beratung.</p>
+  <button class="btn primary" value="ok">Verstanden, KI nutzen</button>
+  <button class="btn quiet" value="no">Nur feste Hinweise</button>
 </form></dialog>
 
 <dialog class="sheet" id="tokenDlg"><form class="sheet-body form" id="tokenForm" method="dialog">

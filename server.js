@@ -6,7 +6,8 @@ import { timingSafeEqual } from 'node:crypto';
 import { loadKey } from './crypto.js';
 import { openDb, DEFAULT_USER } from './db.js';
 import { CAPSULE_SIZES, totals, dose, fatExact } from './public/calc.js';
-import { lookupBarcode, estimateWithGemini } from './analyze.js';
+import { lookupBarcode, estimateWithGemini, adviseSnackWithGemini } from './analyze.js';
+import { cleanSnackRequest, snackProfile, buildSnackPrompt, normalizeAdvice, fallbackAdvice, SNACK_AGE_GROUPS } from './public/snack.js';
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const PUBLIC = join(ROOT, 'public');
@@ -65,6 +66,9 @@ export function createApp({ db, accessToken = process.env.ACCESS_TOKEN, geminiKe
         weightKg: need(num(b.weightKg, 2, 300), 'Gewicht ungültig'),
         lipasePerGramFat: need(num(b.lipasePerGramFat, 0, 20000), 'Lipase-Faktor ungültig'),
       };
+      // Freiwillige Angaben für den Snack-Kompass: nur gespeichert, wenn ausgefüllt (Profil ohne sie bleibt unverändert).
+      if (b.ageGroup in SNACK_AGE_GROUPS) v.ageGroup = b.ageGroup;
+      for (const [k, max] of [['allergies', 200], ['preferences', 200], ['dietNotes', 300]]) if (str(b[k], max)) v[k] = str(b[k], max);
       db.setPatient(user, v); return v;
     }
     if (p === '/api/settings' && m === 'PUT') {
@@ -89,6 +93,18 @@ export function createApp({ db, accessToken = process.env.ACCESS_TOKEN, geminiKe
       if (!aiAllowed()) throw new HttpError(429, 'Zu viele KI-Anfragen – bitte kurz warten');
       const r = await estimateWithGemini({ base64: b.image, mime: b.mime }, { apiKey: geminiKey, model: geminiModel, fetchImpl });
       if (r.error) throw new HttpError(r.status, r.error); return r;
+    }
+    if (p === '/api/snack-advice' && m === 'POST') {
+      let sreq; try { sreq = cleanSnackRequest(await readJson(req, 20_000)); } catch (e) { throw e instanceof HttpError ? e : new BadRequest(e.message); }
+      // Profilangaben kommen vom Server (Quelle der Wahrheit), nicht aus der Anfrage; Name, Maße und Lipase-Faktor gehen nie an die KI.
+      const profile = snackProfile(db.getPatient(user));
+      const fixed = (notice) => ({ source: 'fallback', notice, options: fallbackAdvice(sreq.wishId, profile) });
+      if (!geminiKey) return fixed('Die KI ist nicht eingerichtet. Hier sind feste Hinweise.');
+      if (!aiAllowed()) return fixed('Gerade zu viele KI-Anfragen. Hier sind feste Hinweise.');
+      const g = await adviseSnackWithGemini({ prompt: buildSnackPrompt(sreq, profile) }, { apiKey: geminiKey, model: geminiModel, fetchImpl });
+      if (g.error) return fixed('Die KI ist gerade nicht erreichbar. Hier sind feste Hinweise.');
+      const options = normalizeAdvice(g.parsed, profile);
+      return options ? { source: 'ai', options } : fixed('Die KI-Antwort war nicht verwendbar. Hier sind feste Hinweise.');
     }
     if (p === '/api/meals' && m === 'GET') {
       const from = url.searchParams.get('from'), to = url.searchParams.get('to');

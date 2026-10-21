@@ -42,7 +42,8 @@ const SCHEMA = {
   required: ['items'],
 };
 
-export async function estimateWithGemini({ base64, mime }, { apiKey, model, fetchImpl = fetch }) {
+// Gemeinsamer Gemini-Aufruf (Foto-Schätzung und Snack-Kompass): eine Anbindung, ein Fehlerverhalten.
+async function callGemini({ parts, schema, temperature }, { apiKey, model, fetchImpl = fetch }) {
   if (!apiKey) return { error: 'KI nicht konfiguriert (GEMINI_API_KEY fehlt)', status: 503 };
   let res;
   try {
@@ -50,8 +51,8 @@ export async function estimateWithGemini({ base64, mime }, { apiKey, model, fetc
       method: 'POST', signal: AbortSignal.timeout(30000),
       headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: mime, data: base64 } }] }],
-        generationConfig: { temperature: 0.2, responseMimeType: 'application/json', responseSchema: SCHEMA },
+        contents: [{ parts }],
+        generationConfig: { temperature, responseMimeType: 'application/json', responseSchema: schema },
       }),
     });
   } catch { return { error: 'KI nicht erreichbar', status: 502 }; }
@@ -65,5 +66,22 @@ export async function estimateWithGemini({ base64, mime }, { apiKey, model, fetc
   let parsed;
   try { parsed = JSON.parse((await res.json()).candidates[0].content.parts[0].text); }
   catch { return { error: 'KI-Antwort nicht lesbar', status: 502 }; }
-  return { items: normalizeEstimate(parsed) };
+  return { parsed };
 }
+
+export async function estimateWithGemini({ base64, mime }, opts) {
+  const r = await callGemini({ parts: [{ text: PROMPT }, { inline_data: { mime_type: mime, data: base64 } }], schema: SCHEMA, temperature: 0.2 }, opts);
+  return r.error ? r : { items: normalizeEstimate(r.parsed) };
+}
+
+const ITEM_SCHEMA = SCHEMA.properties.items.items;
+const SNACK_SCHEMA = {
+  type: 'OBJECT',
+  properties: { options: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+    key: { type: 'STRING' }, title: { type: 'STRING' }, text: { type: 'STRING' }, items: { type: 'ARRAY', items: ITEM_SCHEMA },
+  }, required: ['key', 'title', 'text', 'items'] } } },
+  required: ['options'],
+};
+
+/** Snack-Kompass: liefert { parsed } (ungeprüfte KI-Antwort; Prüfung in public/snack.js) oder { error, status }. */
+export const adviseSnackWithGemini = ({ prompt }, opts) => callGemini({ parts: [{ text: prompt }], schema: SNACK_SCHEMA, temperature: 0.7 }, opts);
