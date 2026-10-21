@@ -27,7 +27,7 @@ Den Faktor legt die behandelnde Ärztin / der behandelnde Arzt fest. Die App ers
 ## Scan: Barcode oder KI
 1. Foto wird **im Browser** nach einem Barcode (EAN/UPC) durchsucht (eingebauter `BarcodeDetector`, sonst mitgelieferte zxing-Bibliothek in `public/vendor/`, MIT-Lizenz).
 2. Barcode gefunden → nur die Nummer geht an die Open-Food-Facts-Datenbank (Nährwerte pro 100 g).
-3. Kein Barcode / Produkt unbekannt → Auswahl „Neuer Versuch / KI benutzen / Abbrechen“. Nur bei „KI benutzen“ geht das Foto an Gemini, das Zutaten, Mengen und Nährwerte **schätzt**. Vor der ersten Nutzung erscheint ein Hinweis. Einträge sind als „KI-Schätzung“ markiert und per Antippen korrigierbar.
+3. Kein Barcode / Produkt unbekannt → die KI (Gemini) **schätzt automatisch** Zutaten, Mengen und Nährwerte, ohne Auswahl. Vor der ersten Nutzung erscheint einmalig ein Hinweis mit Einwilligung (gemerkt im Browser); ohne Einwilligung geht nichts an die KI. Erkennt die KI kein Essen, erscheint das Pop-up „Kein Essen erkannt“ (Neuer Versuch / Abbrechen). Ist die KI nicht eingerichtet, erklärt ein Pop-up das. Einträge sind als „KI-Schätzung“ markiert und per Antippen korrigierbar.
 Der API-Schlüssel liegt nur auf dem Server; KI-Aufrufe sind auf 10/Minute begrenzt.
 
 ## Verlauf & Auswertung
@@ -42,10 +42,13 @@ Die zuletzt gewählte Kreon-Größe bleibt gespeichert; eine neue Mahlzeit start
 - **Transportverschlüsselung** (HTTPS) übernimmt ein Reverse-Proxy (z. B. Caddy/nginx); die App selbst spricht nur HTTP.
 
 ## Tests, Migrationen, Prüfwerkzeuge
-- `npm test`: 52 Tests (Logik, Datenbank, Sicherheit, Plausibilität, 13 Browser-Tests mit Chromium; Open Food Facts und Gemini darin nachgebaut). Für die Browser-Tests `npm install` (Entwicklungs-Abhängigkeit `playwright-core`) und ein Chromium (Pfad per `CHROMIUM_PATH`); ohne beides werden sie mit Begründung übersprungen.
+- `npm test`: 67 Tests (Logik, Datenbank, Sicherheit, Plausibilität, 13 Browser-Tests mit Chromium; Open Food Facts und Gemini darin nachgebaut). Für die Browser-Tests `npm install` (Entwicklungs-Abhängigkeit `playwright-core`) und ein Chromium (Pfad per `CHROMIUM_PATH`); ohne beides werden sie mit Begründung übersprungen.
 - `npm run test:live`: **echte** Dienste (Open Food Facts; Gemini mit `GEMINI_API_KEY` und `-- --photo bild.jpg`). Nur ein Lauf dieses Befehls belegt „live getestet“.
 - Datenbankschema: nummerierte Migrationen (`db.js`), automatische Sicherung vor jeder Migration.
 - `npm run migrate:encryption`: Altdaten (Format v1) auf v2 umschlüsseln – nur auf ausdrücklichen Aufruf, mit Sicherung.
+
+## Snack-Kompass
+Startseite „Ich habe Lust auf …“: drei Optionen (Alternative, genießen, nachspüren), optional Übernahme in die Mahlzeit. Feste Texte ohne KI. Details, Sicherheitsregeln und Grenzen: `docs/SNACK_KOMPASS.md`.
 
 ## Login später
 Alle Tabellen haben `user_id`; `resolveUser()` in `server.js` ist die einzige Stelle, die später durch Sessions/Login ersetzt werden muss.

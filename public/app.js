@@ -2,6 +2,8 @@ import { totals, dose, fatExact, truncated, unitsPerKg, rangeFor, elapsedDays, s
 import { ISSUE_TEXT } from './estimate.js';
 import { scanImage } from './scan.js';
 import { api } from './api.js';
+import { initSnackCompass } from './snack-ui.js';
+import { SNACK_AGE_GROUPS } from './snack.js';
 import { buildReport, toCsv, toText, barChartSvg } from './report.js';
 
 const $ = (id) => document.getElementById(id);
@@ -168,7 +170,7 @@ $('itemForm').addEventListener('submit', (e) => {
 });
 $('itemDel').onclick = () => { state.items.splice(state.editIndex, 1); state.capsTouched = false; $('itemDlg').close(); renderHome(); };
 
-// ---- Scan (Barcode -> Open Food Facts, sonst KI) ----
+// ---- Scan (Barcode -> Open Food Facts, sonst automatisch KI) ----
 const AI_OK = () => { try { return localStorage.getItem('enzymateProAiConsent') === '1'; } catch { return false; } };
 async function confirmAi() {
   if (AI_OK()) return true;
@@ -176,14 +178,12 @@ async function confirmAi() {
   if (ok) try { localStorage.setItem('enzymateProAiConsent', '1'); } catch { /* nur für diese Sitzung */ }
   return ok;
 }
-const chooseNext = (reason, aiAvailable) => askChoice('failDlg', () => {
-  $('failMsg').textContent = reason + (aiAvailable ? '' : ' Die KI ist nicht eingerichtet.'); $('failAi').hidden = !aiAvailable;
-});
+const notify = ({ title, message }) => askChoice('failDlg', () => { $('failTitle').textContent = title; $('failMsg').textContent = message; });
 $('photo').addEventListener('change', guard(async (e) => {
   const file = e.target.files[0]; e.target.value = ''; if (!file) return;
   const msg = $('scanMsg'); msg.textContent = 'Suche Barcode …';
   try {
-    const r = await scanImage(file, { api: call, ai: state.ai, confirmAi, chooseNext, status: (t) => (msg.textContent = t) });
+    const r = await scanImage(file, { api: call, ai: state.ai, confirmAi, notify, status: (t) => (msg.textContent = t) });
     if (!r) { msg.textContent = ''; return; }
     if (r.retry) { msg.textContent = 'Neues Foto aufnehmen – Barcode gut sichtbar, ohne Spiegelung.'; $('photo').click(); return; }
     state.items.push(...r.items); state.capsTouched = false; renderHome();
@@ -355,13 +355,29 @@ $('rCopy').onclick = guard(async () => {
 function fillProfile() {
   const p = state.patient;
   $('pName').value = p.name; $('pHeight').value = p.heightCm ?? ''; $('pWeight').value = p.weightKg ?? ''; $('pFactor').value = p.lipasePerGramFat ?? '';
+  $('pAge').value = p.ageGroup ?? ''; $('pAllergies').value = p.allergies ?? ''; $('pPrefs').value = p.preferences ?? ''; $('pDiet').value = p.dietNotes ?? '';
 }
 $('profileForm').addEventListener('submit', guard(async (e) => {
   e.preventDefault();
   const v = (id) => ($(id).value === '' ? null : Number($(id).value));
-  state.patient = await call('/patient', 'PUT', { name: $('pName').value, heightCm: v('pHeight'), weightKg: v('pWeight'), lipasePerGramFat: v('pFactor') });
+  state.patient = await call('/patient', 'PUT', { name: $('pName').value, heightCm: v('pHeight'), weightKg: v('pWeight'), lipasePerGramFat: v('pFactor'),
+    ageGroup: $('pAge').value, allergies: $('pAllergies').value, preferences: $('pPrefs').value, dietNotes: $('pDiet').value });
   state.capsTouched = false; showPage('home'); toast('Profil gespeichert');
 }));
+
+// ---- Snack-Kompass ----
+$('pAge').append(...Object.entries(SNACK_AGE_GROUPS).map(([v, t]) => el('option', { value: v, textContent: t })));
+async function eatenToday() { // nur Namen der heute erfassten Lebensmittel (für die Beratung)
+  try {
+    const from = startOfDay(new Date()), to = new Date(from); to.setDate(to.getDate() + 1);
+    const meals = await api(`/meals?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`);
+    return [...new Set(meals.flatMap((m) => m.items.map((i) => i.name)))].slice(0, 10);
+  } catch { return []; }
+}
+initSnackCompass({ $, el, call, state, askChoice, toast, guard, eatenToday,
+  adopt: (items) => { state.items.push(...items); state.capsTouched = false; renderHome(); },
+  openManual: () => $('manualBtn').click() });
+$('menuSnack').onclick = () => { $('menuDlg').close(); showPage('home'); $('snack').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 
 // ---- Start ----
 guard(async () => {

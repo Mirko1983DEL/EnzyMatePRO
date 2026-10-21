@@ -19,19 +19,24 @@ before(async () => {
 after(async () => { for (const c of closers) await c(); await browser?.close(); });
 
 const json = (s, b) => ({ status: s, ok: s < 400, json: async () => b, text: async () => JSON.stringify(b) });
-const mockFetch = ({ geminiItems, offNutriments } = {}) => async (url) => {
+const SNACK_OK = { options: [
+  { key: 'A', title: 'Joghurt mit Erdbeeren', text: 'Naturjoghurt mit Erdbeeren schmeckt süß und liefert Eiweiß.', items: [{ name: 'Joghurt mit Erdbeeren', grams: 200, fatPer100: 3, kcalPer100: 70, carbsPer100: 8, proteinPer100: 4 }] },
+  { key: 'B', title: 'Schokolade genießen', text: 'Du kannst auch Schokolade essen. Genieße sie bewusst.', items: [] },
+  { key: 'C', title: 'Kurz nachspüren', text: 'Hast du Hunger oder ist dir langweilig?', items: [] }] };
+const mockFetch = ({ geminiItems, offNutriments, snackOptions, calls } = {}) => async (url, init) => {
+  if (String(url).includes('generativelanguage') && String(init?.body).includes('Snack-Kompass')) { calls?.push(JSON.parse(init.body)); return json(200, { candidates: [{ content: { parts: [{ text: JSON.stringify(snackOptions ?? SNACK_OK) }] } }] }); }
   if (String(url).includes('openfoodfacts')) return json(200, { status: 1, product: { product_name: 'Testprodukt', brands: 'Mock', serving_quantity: 100, nutriments: offNutriments ?? { fat_100g: 7.5, 'energy-kcal_100g': 160, carbohydrates_100g: 15, proteins_100g: 8 } } });
   if (String(url).includes('generativelanguage')) return json(200, { candidates: [{ content: { parts: [{ text: JSON.stringify({ items: geminiItems ?? [] }) }] } }] });
   return json(404, {});
 };
 async function startApp(opts = {}, geminiKey = '') {
-  const db = openDb(':memory:', randomBytes(32)), srv = createServer(createApp({ db, geminiKey, fetchImpl: mockFetch(opts) }));
+  const calls = [], db = openDb(':memory:', randomBytes(32)), srv = createServer(createApp({ db, geminiKey, fetchImpl: mockFetch({ ...opts, calls }) }));
   await new Promise((r) => srv.listen(0, r)); closers.push(() => { srv.closeAllConnections?.(); srv.close(); });
   const base = `http://127.0.0.1:${srv.address().port}`;
   const api = (p, m = 'GET', b) => fetch(base + p, { method: m, headers: { 'content-type': 'application/json' }, body: b && JSON.stringify(b) }).then((r) => r.json());
   await api('/api/patient', 'PUT', { name: 'Marie', weightKg: 35, lipasePerGramFat: 2000 });
   const meals = () => { const t = Date.now(); return api(`/api/meals?from=${new Date(t - 864e5).toISOString()}&to=${new Date(t + 864e5).toISOString()}`); };
-  return { base, api, meals };
+  return { base, api, meals, calls };
 }
 async function newPage() {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } }); const page = await ctx.newPage(), problems = [];
@@ -51,8 +56,8 @@ test('KI-Einträge mit Hinweisen: markiert, Fett leer, Speichern erst nach Prüf
   if (!browser) return t.skip(skipReason);
   const app = await startApp({ geminiItems: GEMINI }, 'KEY'); const { page, problems, ctx } = await newPage();
   await page.goto(app.base); await page.waitForSelector('#manualBtn');
-  await page.setInputFiles('#photo', png(plainPhoto())); await page.waitForSelector('#failDlg[open]', { timeout: 20000 });
-  await page.click('#failAi'); await page.waitForSelector('#aiDlg[open]'); await page.click('#aiDlg button[value=ok]');
+  await page.setInputFiles('#photo', png(plainPhoto())); await page.waitForSelector('#aiDlg[open]', { timeout: 20000 });
+  await page.click('#aiDlg button[value=ok]');
   await page.waitForFunction(() => document.querySelectorAll('#items li').length === 3, null, { timeout: 15000 });
   assert.equal(await page.locator('#items .tag.review').count(), 2);
   assert.match(await page.textContent('#scanMsg'), /2 Einträge sind markiert/);
@@ -142,5 +147,93 @@ test('Ladeanzeige: Kapsel erscheint erst bei langsamer Antwort, dreht sich und v
   assert.notEqual(await page.evaluate(() => getComputedStyle(document.querySelector('#loader .pill')).animationName), 'none', 'dreht sich');
   await toastHas(page, /Gespeichert/); assert.equal(await shown(), false, 'danach ausgeblendet');
   await page.unroute('**/api/meals'); await manual(page, 'Brot', 50, 1); await page.click('#saveMeal'); await toastHas(page, /Gespeichert/);
+  assert.deepEqual(problems, []); await ctx.close();
+});
+
+test('Kein Essen erkannt: Pop-up; Neuer Versuch öffnet die Kamera erneut; zweite Aufnahme geht ohne erneute Einwilligung automatisch an die KI', async (t) => {
+  if (!browser) return t.skip(skipReason);
+  const app = await startApp({}, 'KEY'); const { page, problems, ctx } = await newPage();
+  await page.goto(app.base); await page.waitForSelector('#manualBtn');
+  await page.setInputFiles('#photo', png(plainPhoto())); await page.waitForSelector('#aiDlg[open]', { timeout: 20000 });
+  await page.click('#aiDlg button[value=ok]');
+  await page.waitForSelector('#failDlg[open]', { timeout: 15000 });
+  assert.equal((await page.textContent('#failTitle')).trim(), 'Kein Essen erkannt');
+  assert.equal(await page.locator('#items li').count(), 0);
+  await page.click('#failDlg button[value=no]');
+  await page.setInputFiles('#photo', png(plainPhoto()));
+  await page.waitForSelector('#failDlg[open]', { timeout: 15000 });
+  assert.equal(await page.isVisible('#aiDlg[open]'), false, 'Einwilligung wird nur einmal abgefragt');
+  assert.equal((await page.textContent('#failTitle')).trim(), 'Kein Essen erkannt');
+  assert.deepEqual(problems, []); await ctx.close();
+});
+
+// ---- Snack-Kompass (Gemini nachgebaut) ----
+test('Snack-Kompass ohne KI: sichtbarer Bereich, Pop-up mit festen Hinweisen A/B/C, keine Einwilligung, kein KI-Aufruf', async (t) => {
+  if (!browser) return t.skip(skipReason);
+  const app = await startApp(); const { page, problems, ctx } = await newPage();
+  await page.goto(app.base); await page.waitForSelector('#snackWishes .wish');
+  assert.equal(await page.locator('#snackWishes .wish').count(), 5);
+  await page.click('#snackWishes .wish >> nth=1');
+  await page.waitForSelector('#snackDlg[open]');
+  assert.match(await page.textContent('#snackNotice'), /nicht eingerichtet/);
+  assert.equal(await page.locator('#snackOpts .snack-opt').count(), 3);
+  assert.equal(await page.isVisible('#snackAiDlg[open]'), false); assert.equal(app.calls.length, 0);
+  assert.equal(await page.locator('#snackOpts button', { hasText: 'In Mahlzeit übernehmen' }).count(), 0, 'feste Texte haben keine erfundenen Nährwerte');
+  await page.click('#snackClose'); assert.deepEqual(problems, []); await ctx.close();
+});
+
+test('Snack-Kompass mit KI: einmalige Einwilligung, Optionen A/B/C, Übernahme in die Mahlzeit; Dosis rechnet wie immer', async (t) => {
+  if (!browser) return t.skip(skipReason);
+  const app = await startApp({}, 'KEY'); await app.api('/api/patient', 'PUT', { name: 'Marie', weightKg: 35, lipasePerGramFat: 2000 });
+  const { page, problems, ctx } = await newPage();
+  await page.goto(app.base); await page.waitForSelector('#snackWishes .wish');
+  await page.selectOption('#snackMood', 'muede');
+  await page.click('#snackWishes .wish >> nth=1');
+  await page.waitForSelector('#snackAiDlg[open]'); assert.equal(app.calls.length, 0, 'vor der Einwilligung keine KI');
+  assert.match(await page.textContent('#snackAiDlg'), /Name, Größe, Gewicht und Lipase-Faktor werden nicht gesendet/);
+  await page.click('#snackAiDlg button[value=ok]'); await page.waitForSelector('#snackDlg[open]');
+  assert.equal(await page.isVisible('#snackNotice'), false, 'echte KI-Antwort ohne Hinweis');
+  const titles = await page.locator('#snackOpts h4').allTextContents(); assert.deepEqual(titles.map((x) => x[0]), ['A', 'B', 'C']);
+  assert.ok(app.calls[0].contents[0].parts[0].text.includes('müde')); assert.ok(!JSON.stringify(app.calls[0]).includes('Marie'));
+  await page.click('#snackOpts button:has-text("In Mahlzeit übernehmen")');
+  await page.waitForFunction(() => document.querySelectorAll('#items li').length === 1);
+  assert.match(await page.textContent('#items li'), /Joghurt mit Erdbeeren.*KI|KI/s);
+  await page.waitForFunction(() => document.getElementById('capCount').textContent === '1', null, { timeout: 8000 });                                   // 200 g × 3 g Fett/100 g = 6 g Fett × 2000 E/g = 12.000 E ÷ 25.000 → 1 Kapsel (Berechnung unverändert)
+  // zweite Anfrage: keine erneute Einwilligung
+  await page.click('#snackWishes .wish >> nth=0'); await page.waitForSelector('#snackDlg[open]');
+  assert.equal(await page.isVisible('#snackAiDlg[open]'), false); assert.equal(app.calls.length, 2);
+  assert.deepEqual(problems, []); await ctx.close();
+});
+
+test('Snack-Kompass: Eigeneingabe (leer abgelehnt), Einwilligung verweigert → feste Hinweise, verbotene KI-Antwort wird nicht angezeigt, offline → feste Hinweise', async (t) => {
+  if (!browser) return t.skip(skipReason);
+  const bad = structuredClone(SNACK_OK); bad.options[0].text = 'Eine gesündere Alternative mit weniger Kalorien.';
+  const app = await startApp({ snackOptions: bad }, 'KEY'); const { page, problems, ctx } = await newPage();
+  await page.goto(app.base); await page.waitForSelector('#snackWishes .wish');
+  await page.click('#snackForm button[type=submit]'); await toastHas(page, /aufschreiben/); assert.equal(await page.isVisible('#snackDlg[open]'), false);
+  await page.fill('#snackText', 'Eis mit Sahne'); await page.click('#snackForm button[type=submit]');
+  await page.waitForSelector('#snackAiDlg[open]'); await page.click('#snackAiDlg button[value=no]'); await page.waitForSelector('#snackDlg[open]');
+  assert.match(await page.textContent('#snackNotice'), /Einwilligung/); assert.equal(app.calls.length, 0);
+  await page.click('#snackClose');
+  await page.click('#snackWishes .wish >> nth=0'); await page.waitForSelector('#snackAiDlg[open]'); await page.click('#snackAiDlg button[value=ok]'); await page.waitForSelector('#snackDlg[open]');
+  assert.match(await page.textContent('#snackNotice'), /nicht verwendbar/); assert.ok(!/Kalorien|gesünder/.test(await page.textContent('#snackOpts')));
+  assert.ok(app.calls[0].contents[0].parts[0].text.includes('<wunsch>')); await page.click('#snackClose');
+  await page.route('**/api/snack-advice', (r) => r.abort());
+  await page.click('#snackWishes .wish >> nth=2'); await page.waitForSelector('#snackDlg[open]');
+  assert.match(await page.textContent('#snackNotice'), /Keine Verbindung|nicht geklappt/); assert.equal(await page.locator('#snackOpts .snack-opt').count(), 3);
+  assert.deepEqual(problems.filter((p) => !/ERR_FAILED|Failed to load resource/.test(p)), []); await ctx.close();
+});
+
+test('Snack-Kompass: Profilangaben (Allergien, Vorlieben, Altersgruppe) werden gespeichert und in der Anfrage genutzt', async (t) => {
+  if (!browser) return t.skip(skipReason);
+  const app = await startApp({}, 'KEY'); await app.api('/api/patient', 'PUT', { name: 'Marie', lipasePerGramFat: 2000 });
+  const { page, problems, ctx } = await newPage();
+  await page.goto(app.base); await page.waitForSelector('#snackWishes .wish');
+  await page.click('#menuBtn'); await page.click('[data-go=profile]');
+  await page.click('#profileForm summary'); await page.selectOption('#pAge', 'kind'); await page.fill('#pAllergies', 'Nüsse'); await page.fill('#pPrefs', 'Erdbeeren');
+  await page.click('#profileForm button[type=submit]'); await toastHas(page, /Profil gespeichert/);
+  await page.click('#snackWishes .wish >> nth=3'); await page.waitForSelector('#snackAiDlg[open]'); await page.click('#snackAiDlg button[value=ok]'); await page.waitForSelector('#snackDlg[open]');
+  const prompt = app.calls[0].contents[0].parts[0].text; assert.ok(prompt.includes('Nüsse') && prompt.includes('Erdbeeren') && prompt.includes('Kind an'));
+  assert.equal((await app.api('/api/state')).patient.lipasePerGramFat, 2000, 'Lipase-Faktor unverändert');
   assert.deepEqual(problems, []); await ctx.close();
 });
